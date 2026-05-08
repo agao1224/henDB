@@ -207,3 +207,20 @@ TEST_F(BufferPoolTest, CannotEvictUsedPages) {
   for (auto pgkey : page_keys)
     ASSERT_TRUE(manager.evict_page(pgkey));
 }
+
+TEST_F(BufferPoolTest, PinCount) {
+  TableID tid = 1;
+  storage::StorageEngine *storage =
+      new storage::StorageEngine(storage::StorageEngine::open(basedir));
+
+  storage->create_table(tid);
+  pager::BufferPoolManager manager(20, storage);
+
+  auto pgkey = manager.new_page(tid);
+  ASSERT_TRUE(pgkey.has_value());
+  std::vector<pager::ReadPageGuard> guards;
+  for (int i = 0; i < 10; i++)
+    guards.push_back(manager.read_page(pgkey.value()));
+
+  ASSERT_EQ(manager.get_pin_count(pgkey.value()), 10);
+}

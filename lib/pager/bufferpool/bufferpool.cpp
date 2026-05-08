@@ -156,10 +156,14 @@ bool pager::BufferPoolManager::evict_page(PageKey pgkey) {
 
 bool pager::BufferPoolManager::flush_page(PageKey pgkey) {
   assert(storage_engine_ != nullptr);
+  assert(bpm_latch_ != nullptr);
 
+  bpm_latch_->lock();
   auto it = frame_table_.find(pgkey);
-  if (it == frame_table_.end())
+  if (it == frame_table_.end()) {
+    bpm_latch_->unlock();
     return false;
+  }
   pager::frame_id_t frame_id = it->second;
 
   assert(0 <= frame_id && frame_id < frames_.size());
@@ -173,11 +177,14 @@ bool pager::BufferPoolManager::flush_page(PageKey pgkey) {
   frame->set_dirty(false);
 
   frame->unlock_write();
+  bpm_latch_->unlock();
   return true;
 }
 
 void pager::BufferPoolManager::flush_all_pages() {
   assert(storage_engine_ != nullptr);
+  assert(bpm_latch_ != nullptr);
+  bpm_latch_->lock();
   for (auto &[pgkey, frame_id] : frame_table_) {
     assert(0 <= frame_id && frame_id < frames_.size());
     auto frame = frames_[frame_id];
@@ -191,16 +198,24 @@ void pager::BufferPoolManager::flush_all_pages() {
 
     frame->unlock_write();
   }
+  bpm_latch_->unlock();
 }
 
 std::optional<size_t> pager::BufferPoolManager::get_pin_count(PageKey pgkey) {
+  assert(bpm_latch_ != nullptr);
+
+  bpm_latch_->lock();
   auto it = frame_table_.find(pgkey);
-  if (it == frame_table_.end())
+  if (it == frame_table_.end()) {
+    bpm_latch_->unlock();
     return std::nullopt;
+  }
 
   pager::frame_id_t frame_id = it->second;
   assert(0 <= frame_id && frame_id < frames_.size());
   auto frame = frames_[frame_id];
+  size_t pins = frame->get_pins();
+  bpm_latch_->unlock();
 
-  return frame->get_pins();
+  return pins;
 }
