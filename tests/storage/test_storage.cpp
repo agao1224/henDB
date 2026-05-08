@@ -1,5 +1,3 @@
-
-#include "encoding.h"
 #include "storage/storage.h"
 #include "storage_utils.h"
 #include "test_utils.h"

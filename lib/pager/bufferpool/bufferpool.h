@@ -75,7 +75,7 @@ public:
   std::optional<PageKey> new_page(TableID tbl_id);
   pager::ReadPageGuard read_page(PageKey pgkey);
   pager::WritePageGuard write_page(PageKey pgkey);
-  bool delete_page(PageKey pgkey);
+  bool evict_page(PageKey pgkey);
 
   bool flush_page(PageKey pgkey);
   void flush_all_pages();

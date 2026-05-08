@@ -3,6 +3,7 @@
 #include "pager/bufferpool/pageguard.h"
 #include "storage/storage.h"
 #include "test_utils.h"
+#include <cstddef>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <thread>
@@ -165,4 +166,31 @@ TEST_F(PageGuardTest, ConcurrentRWPageGuards) {
 
   std::thread read_thread(read_buffer, new_payload);
   read_thread.join();
+}
+
+TEST_F(PageGuardTest, DropGuard) {
+  auto frame = std::make_shared<pager::FrameHeader>(0);
+  auto evictor = std::make_shared<pager::LRUKEvictor>(2, 10);
+  auto bpm_latch = std::make_shared<std::mutex>();
+  auto storage_engine = std::make_shared<storage::StorageEngine>(
+      storage::StorageEngine::open(basedir));
+
+  PageKey pgkey(1, 1);
+  pager::ReadPageGuard rg1(pgkey, frame, evictor, bpm_latch, storage_engine);
+  pager::ReadPageGuard rg2(pgkey, frame, evictor, bpm_latch, storage_engine);
+  pager::ReadPageGuard rg3(pgkey, frame, evictor, bpm_latch, storage_engine);
+
+  ASSERT_EQ(frame->get_pins(), 3);
+  ASSERT_EQ(evictor->evict(), std::nullopt);
+
+  rg1.drop();
+  rg1.drop();
+
+  ASSERT_EQ(frame->get_pins(), 2);
+
+  rg2.drop();
+  rg3.drop();
+
+  ASSERT_EQ(frame->get_pins(), 0);
+  ASSERT_NE(evictor->evict(), std::nullopt);
 }

@@ -12,6 +12,7 @@ pager::ReadPageGuard::ReadPageGuard(
     : pgkey_(pgkey), frame_(frame), evictor_(evictor), bpm_latch_(bpm_latch),
       storage_engine_(storage_engine), is_valid(true) {
   frame_->incr_pins();
+  evictor_->record_access(frame_->get_frame_id());
   frame_->lock_read();
 }
 
@@ -101,6 +102,7 @@ pager::WritePageGuard::WritePageGuard(
     : pgkey_(pgkey), frame_(frame), evictor_(evictor), bpm_latch_(bpm_latch),
       storage_engine_(storage_engine), is_valid(true) {
   frame_->incr_pins();
+  evictor_->record_access(frame_->get_frame_id());
   frame_->lock_write();
 }
 

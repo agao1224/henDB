@@ -15,6 +15,8 @@ pager::BufferPoolManager::BufferPoolManager(
   }
 }
 
+pager::BufferPoolManager::~BufferPoolManager() = default;
+
 size_t pager::BufferPoolManager::size() const {
   assert(free_list_.size() + frame_table_.size() == num_frames_);
   return frame_table_.size();
@@ -122,26 +124,23 @@ pager::WritePageGuard pager::BufferPoolManager::write_page(PageKey pgkey) {
   return page_guard;
 }
 
-bool pager::BufferPoolManager::delete_page(PageKey pgkey) {
+bool pager::BufferPoolManager::evict_page(PageKey pgkey) {
   assert(bpm_latch_ != nullptr);
   bpm_latch_->lock();
 
-  if (frame_table_.find(pgkey) == frame_table_.end()) {
+  auto it = frame_table_.find(pgkey);
+  if (it == frame_table_.end()) {
     bpm_latch_->unlock();
-    return false;
+    return true;
   }
 
-  pager::frame_id_t frame_id = frame_table_[pgkey];
-
+  pager::frame_id_t frame_id = it->second;
   assert(0 <= frame_id && frame_id < frames_.size());
   auto frame = frames_[frame_id];
   assert(frame != nullptr);
 
-  frame->lock_write();
-
   if (frame->get_pins() > 0) {
     bpm_latch_->unlock();
-    frame->unlock_write();
     return false;
   }
 
@@ -150,7 +149,6 @@ bool pager::BufferPoolManager::delete_page(PageKey pgkey) {
   free_list_.push_back(frame_id);
   evictor_->remove(frame_id);
 
-  frame->unlock_write();
   bpm_latch_->unlock();
 
   return true;
