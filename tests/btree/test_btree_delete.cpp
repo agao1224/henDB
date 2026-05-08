@@ -1,13 +1,13 @@
 #include <cstddef>
 #include <string>
 
-#include <gtest/gtest.h>
-#include "db_test_fixture.h"
 #include "btree/btree.h"
 #include "btree/btree_test_utils.h"
 #include "btree/builder/btree_builder.h"
+#include "db_test_fixture.h"
 #include "pager/leaf_page/leaf_page.h"
 #include "pager/node_page/node_page.h"
+#include <gtest/gtest.h>
 
 class BTreeCursorDeleteTest : public DbTestFixture {};
 
@@ -20,10 +20,7 @@ TEST_F(BTreeCursorDeleteTest, BTreeDeleteBasic1) {
   config.node_max_cells = config.leaf_max_cells = 3;
 
   PageNumber root_pgno = BTreeBuilder::build_tree(
-    "tests/btree/configs/basic1.yaml",
-    pager.get(),
-    config
-  );
+      "tests/btree/configs/basic1.yaml", pager.get(), config);
 
   NodePageManager init_npm(root_pgno, db_file_ptr);
   PageNumber node1_pgno = init_npm.cells_[0].left_child;
@@ -161,10 +158,7 @@ TEST_F(BTreeCursorDeleteTest, BTreeDeleteBasic3) {
   config.node_max_cells = config.leaf_max_cells = 3;
 
   PageNumber root_pgno = BTreeBuilder::build_tree(
-    "tests/btree/configs/basic3.yaml",
-    pager.get(),
-    config
-  );
+      "tests/btree/configs/basic3.yaml", pager.get(), config);
 
   BTreeCursor cursor(pager.get(), root_pgno, config);
 
@@ -176,9 +170,9 @@ TEST_F(BTreeCursorDeleteTest, BTreeDeleteBasic3) {
   NodePageManager npm(root_pgno, db_file_ptr);
   PageNumber lpm2_pgno = npm.cells_[1].left_child;
   assert_cursor_stack(cursor.get_cursor_stack(), {
-    {lpm2_pgno,  1},
-    {root_pgno,  1},
-  });
+                                                     {lpm2_pgno, 1},
+                                                     {root_pgno, 1},
+                                                 });
   ASSERT_EQ(npm.num_cells_, 2);
   ASSERT_EQ(npm.cells_[0].key, 4);
   ASSERT_EQ(npm.cells_[1].key, 12);
@@ -223,10 +217,7 @@ TEST_F(BTreeCursorDeleteTest, BTreeDeleteDelete1) {
   config.node_max_cells = config.leaf_max_cells = 4;
 
   PageNumber root_pgno = BTreeBuilder::build_tree(
-    "tests/btree/configs/delete1.yaml",
-    pager.get(),
-    config
-  );
+      "tests/btree/configs/delete1.yaml", pager.get(), config);
 
   BTreeCursor cursor(pager.get(), root_pgno, config);
 
@@ -255,10 +246,10 @@ TEST_F(BTreeCursorDeleteTest, BTreeDeleteDelete1) {
   PageNumber leaf6_pgno = right_npm.right_child_;
 
   assert_cursor_stack(cursor.get_cursor_stack(), {
-    {leaf4_pgno,    1},
-    {right_node_pgno, 0},
-    {root_pgno,     1},
-  });
+                                                     {leaf4_pgno, 1},
+                                                     {right_node_pgno, 0},
+                                                     {root_pgno, 1},
+                                                 });
 
   LeafPageManager lpm4(leaf4_pgno, db_file_ptr, pager.get());
   ASSERT_EQ(lpm4.num_cells_, 2);
@@ -310,9 +301,9 @@ TEST_F(BTreeCursorDeleteTest, BTreeDeleteDelete1) {
   PageNumber new_leaf6_pgno = new_root_npm.right_child_;
 
   assert_cursor_stack(cursor.get_cursor_stack(), {
-    {new_leaf6_pgno, 0},
-    {new_root_pgno,  4},
-  });
+                                                     {new_leaf6_pgno, 0},
+                                                     {new_root_pgno, 4},
+                                                 });
 
   LeafPageManager new_lpm1(new_leaf1_pgno, db_file_ptr, pager.get());
   ASSERT_EQ(new_lpm1.num_cells_, 2);

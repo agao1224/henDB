@@ -1,5 +1,3 @@
-
-#include "encoding.h"
 #include "storage/storage.h"
 #include "storage_utils.h"
 #include "test_utils.h"
@@ -25,7 +23,7 @@ protected:
 };
 
 TEST_F(StorageEngineTest, InitControl) {
-  StorageEngine storage = StorageEngine::open(basedir);
+  storage::StorageEngine storage = storage::StorageEngine::open(basedir);
   std::unique_ptr fs = std::make_unique<LocalFS>(basedir);
   ASSERT_TRUE(fs != nullptr);
 
@@ -46,7 +44,7 @@ TEST_F(StorageEngineTest, InitControl) {
 }
 
 TEST_F(StorageEngineTest, CreateTableBasic) {
-  StorageEngine storage = StorageEngine::open(basedir);
+  storage::StorageEngine storage = storage::StorageEngine::open(basedir);
   std::unique_ptr fs = std::make_unique<LocalFS>(basedir);
   ASSERT_TRUE(fs != nullptr);
 
@@ -60,7 +58,7 @@ TEST_F(StorageEngineTest, CreateTableBasic) {
 }
 
 TEST_F(StorageEngineTest, AllocatePageBasic) {
-  StorageEngine storage = StorageEngine::open(basedir);
+  storage::StorageEngine storage = storage::StorageEngine::open(basedir);
   std::unique_ptr fs = std::make_unique<LocalFS>(basedir);
 
   TableID tbl_id = 1;
@@ -89,7 +87,7 @@ TEST_F(StorageEngineTest, AllocatePageBasic) {
 }
 
 TEST_F(StorageEngineTest, AllocatePageFlush) {
-  StorageEngine storage = StorageEngine::open(basedir);
+  storage::StorageEngine storage = storage::StorageEngine::open(basedir);
   std::unique_ptr fs = std::make_unique<LocalFS>(basedir);
 
   TableID tbl_id = 1;
@@ -125,7 +123,7 @@ TEST_F(StorageEngineTest, AllocatePageFlush) {
 }
 
 TEST_F(StorageEngineTest, WritePageBasic) {
-  StorageEngine storage = StorageEngine::open(basedir);
+  storage::StorageEngine storage = storage::StorageEngine::open(basedir);
   std::unique_ptr fs = std::make_unique<LocalFS>(basedir);
 
   TableID tbl_id = 1;
@@ -153,7 +151,8 @@ TEST_F(StorageEngineTest, WritePagesMany) {
   size_t pages_per_segmt = 16;
   storage::EngineConfig config = {.segment_size = pages_per_segmt,
                                   .page_size = DEFAULT_PAGE_SIZE};
-  StorageEngine storage = StorageEngine::open(basedir, config);
+  storage::StorageEngine storage =
+      storage::StorageEngine::open(basedir, config);
   std::unique_ptr fs = std::make_unique<LocalFS>(basedir);
 
   TableID tbl_id = 1;
@@ -201,7 +200,8 @@ TEST_F(StorageEngineTest, ReadWritePageEdgeCases) {
   size_t pages_per_segmt = 4;
   storage::EngineConfig config = {.segment_size = pages_per_segmt,
                                   .page_size = DEFAULT_PAGE_SIZE};
-  StorageEngine storage = StorageEngine::open(basedir, config);
+  storage::StorageEngine storage =
+      storage::StorageEngine::open(basedir, config);
 
   TableID tbl_id = 1;
   storage.create_table(tbl_id);
@@ -254,7 +254,7 @@ TEST_F(StorageEngineTest, ReadWritePageEdgeCases) {
 }
 
 TEST_F(StorageEngineTest, TruncateTable) {
-  StorageEngine storage = StorageEngine::open(basedir);
+  storage::StorageEngine storage = storage::StorageEngine::open(basedir);
   std::unique_ptr fs = std::make_unique<LocalFS>(basedir);
 
   TableID tbl_id = 1;
@@ -277,7 +277,7 @@ TEST_F(StorageEngineTest, TruncateTable) {
 }
 
 TEST_F(StorageEngineTest, DeleteTable) {
-  StorageEngine storage = StorageEngine::open(basedir);
+  storage::StorageEngine storage = storage::StorageEngine::open(basedir);
   std::unique_ptr fs = std::make_unique<LocalFS>(basedir);
 
   TableID tbl_id = 1;

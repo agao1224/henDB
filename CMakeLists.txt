@@ -67,9 +67,13 @@ add_library(pager STATIC
   lib/pager/node_page/node_page_manager.cpp
   lib/pager/leaf_page/leaf_page_manager.cpp
   lib/pager/overflow_page/overflow_page_manager.cpp
+  lib/pager/bufferpool/lruk.cpp
+  lib/pager/bufferpool/frameheader.cpp
+  lib/pager/bufferpool/bufferpool.cpp
+  lib/pager/bufferpool/pageguard.cpp
 )
 target_include_directories(pager PUBLIC lib/pager)
-target_link_libraries(pager PUBLIC vfs)
+target_link_libraries(pager PUBLIC vfs storage)
 
 add_library(btree STATIC
   lib/btree/btree.cpp
@@ -164,7 +168,7 @@ target_link_libraries(btree_tests PRIVATE test_utils btree GTest::gtest yaml-cpp
 add_custom_command(TARGET btree_tests POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/tests/btree/configs
-    ${CMAKE_BINARY_DIR}/tests/btree/)
+    ${CMAKE_BINARY_DIR}/tests/btree/configs/)
 add_executable(catalog_tests
   tests/test_main.cpp
   ${CATALOG_TEST_SOURCES}

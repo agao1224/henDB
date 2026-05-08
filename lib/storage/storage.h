@@ -77,8 +77,6 @@ struct TableMetadata {
   }
 };
 
-} // namespace storage
-
 class StorageEngine {
 private:
   std::unique_ptr<VFS> vfs_;
@@ -110,3 +108,5 @@ public:
   void delete_table(TableID tbl_id);
   void shutdown();
 };
+
+} // namespace storage

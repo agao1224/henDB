@@ -377,7 +377,8 @@ void BTreeCursor::insert(DefaultPagerKey key, std::vector<std::byte> value) {
   new_leaf.payload_size = value.size();
   new_leaf.record_page = pager_->create_page(PAGER_OVERFLOW_PAGE, value);
   split_cursor_leaf(new_leaf);
-  assert(move_to_key(key));
+  bool found = move_to_key(key);
+  assert(found);
   return;
 }
 
@@ -396,7 +397,8 @@ void BTreeCursor::remove() {
   lpm.delete_cell(key_to_delete);
 
   if (lpm.num_cells_ >= config_.leaf_min_cells) {
-    assert(!move_to_key(key_to_delete));
+    bool found = move_to_key(key_to_delete);
+    assert(!found);
     return;
   }
 
@@ -417,5 +419,6 @@ void BTreeCursor::remove() {
 
   // NOTE(andrew): key_to_delete no longer exists, so move_to_key lands on
   // the next key
-  assert(!move_to_key(key_to_delete));
+  bool found = move_to_key(key_to_delete);
+  assert(!found);
 }
