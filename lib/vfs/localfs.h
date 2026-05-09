@@ -13,7 +13,7 @@ public:
   void write(std::vector<std::byte> *buffer, size_t len, off_t offset);
   void sync();
   void close();
-  ~LocalFile() = default;
+  ~LocalFile() { close(); }
 };
 
 class LocalFS : public VFS {

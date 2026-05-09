@@ -1,8 +1,8 @@
 #pragma once
 
 #include "encoding.h"
-#include "filecache.h"
 #include "shared.h"
+#include "storage/storage_utils.h"
 #include "vfs/vfs.h"
 #include <cstdint>
 #include <map>
@@ -83,14 +83,14 @@ private:
   storage::EngineConfig config_;
   storage::Control control_;
   std::map<TableID, storage::TableMetadata> table_metadata_;
-  storage::FileCache filecache_;
 
   PageNumber get_latest_page(TableID tbl_id);
 
   void init_control();
   void init_table_metadata();
-  VirtualFile *open_segment(TableID tbl_id, storage::SegmentID seg_id);
-  VirtualFile *get_segment(TableID tbl_id, PageNumber pgno);
+  std::unique_ptr<VirtualFile> open_segment(TableID tbl_id,
+                                            storage::SegmentID seg_id);
+  std::unique_ptr<VirtualFile> get_segment(TableID tbl_id, PageNumber pgno);
 
   StorageEngine(const std::string &basepath, const storage::EngineConfig = {});
 

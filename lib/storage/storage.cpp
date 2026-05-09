@@ -59,26 +59,20 @@ void storage::StorageEngine::init_table_metadata() {
   }
 }
 
-VirtualFile *storage::StorageEngine::open_segment(TableID tbl_id,
-                                                  storage::SegmentID seg_id) {
+std::unique_ptr<VirtualFile>
+storage::StorageEngine::open_segment(TableID tbl_id,
+                                     storage::SegmentID seg_id) {
   const std::string path = storage::seg_path(tbl_id, seg_id);
-
-  storage::FileKey key(tbl_id, seg_id);
-  if (filecache_.exists(key))
-    return filecache_.get(key);
-
-  std::unique_ptr<VirtualFile> file = vfs_->open(path, O_RDWR | O_CREAT);
-  filecache_.put(key, std::move(file));
-  return filecache_.get(key);
+  return vfs_->open(path, O_RDWR | O_CREAT);
 }
 
-VirtualFile *storage::StorageEngine::get_segment(TableID tbl_id,
-                                                 PageNumber pgno) {
+std::unique_ptr<VirtualFile>
+storage::StorageEngine::get_segment(TableID tbl_id, PageNumber pgno) {
   storage::SegmentID seg_id =
       storage::pgno_to_segid(pgno, config_.segment_size);
   assert(vfs_->exists(storage::tbl_path(tbl_id)) &&
          vfs_->exists(storage::seg_path(tbl_id, seg_id)));
-  VirtualFile *seg = open_segment(tbl_id, seg_id);
+  auto seg = open_segment(tbl_id, seg_id);
   if (seg == nullptr)
     throw std::runtime_error(
         "[StorageEngine]: Failed to open segment for tbl=" +
@@ -94,7 +88,7 @@ PageNumber storage::StorageEngine::get_latest_page(TableID tbl_id) {
     storage::SegmentID seg_id = storage::pgno_to_segid(
         DEFAULT_TABLE_METADATA_PGNO, config_.segment_size);
 
-    VirtualFile *first_segmt = open_segment(tbl_id, seg_id);
+    auto first_segmt = open_segment(tbl_id, seg_id);
     assert(first_segmt != nullptr);
     std::vector<std::byte> buffer;
     first_segmt->read(buffer, config_.page_size, 0);
@@ -135,7 +129,7 @@ void storage::StorageEngine::read_page(PageKey pgkey,
     throw std::runtime_error(
         "[StorageEngine:read_page]: Attempted to read past last page");
 
-  VirtualFile *seg = get_segment(tbl_id, pgno);
+  auto seg = get_segment(tbl_id, pgno);
   uint64_t offset = storage::pgno_to_file_offset(pgno, config_.segment_size,
                                                  config_.page_size);
   seg->read(buffer, config_.page_size, offset);
@@ -152,7 +146,7 @@ void storage::StorageEngine::write_page(PageKey pgkey,
     throw std::runtime_error(
         "[StorageEngine:write_page]: Attempted to write past last page");
 
-  VirtualFile *seg = get_segment(tbl_id, pgno);
+  auto seg = get_segment(tbl_id, pgno);
   uint64_t offset = storage::pgno_to_file_offset(pgno, config_.segment_size,
                                                  config_.page_size);
   seg->write(&buffer, config_.page_size, offset);
@@ -170,7 +164,7 @@ PageKey storage::StorageEngine::allocate_page(TableID tbl_id) {
 
   storage::SegmentID seg_id =
       storage::pgno_to_segid(latest_page, config_.segment_size);
-  VirtualFile *segmt = open_segment(tbl_id, seg_id);
+  auto segmt = open_segment(tbl_id, seg_id);
   uint64_t offset = storage::pgno_to_file_offset(
       latest_page, config_.segment_size, config_.page_size);
   segmt->write(nullptr, config_.page_size, offset);
@@ -193,7 +187,7 @@ void storage::StorageEngine::create_table(TableID tbl_id) {
   vfs_->mkdir(dir);
   storage::SegmentID seg_id =
       storage::pgno_to_segid(DEFAULT_TABLE_METADATA_PGNO, config_.segment_size);
-  VirtualFile *first_segmt = open_segment(tbl_id, seg_id);
+  auto first_segmt = open_segment(tbl_id, seg_id);
 
   if (first_segmt == nullptr) {
     throw std::runtime_error(
@@ -218,7 +212,7 @@ void storage::StorageEngine::flush_table(TableID tbl_id) {
     const std::string tbl_metadata_path = storage::seg_path(tbl_id, seg_id);
     assert(vfs_->exists(tbl_metadata_path));
 
-    VirtualFile *segmt = open_segment(tbl_id, seg_id);
+    auto segmt = open_segment(tbl_id, seg_id);
 
     storage::TableMetadata metadata = table_metadata_[tbl_id];
     std::vector<std::byte> buffer = metadata.to_bytes();
@@ -230,7 +224,7 @@ void storage::StorageEngine::flush_table(TableID tbl_id) {
   std::vector<std::string> seg_files = vfs_->ls(storage::tbl_path(tbl_id));
   for (auto &seg_path : seg_files) {
     storage::SegmentID seg_id = storage::path_to_seg_id(seg_path);
-    VirtualFile *seg = open_segment(tbl_id, seg_id);
+    auto seg = open_segment(tbl_id, seg_id);
     seg->sync();
   }
   return;

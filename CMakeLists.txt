@@ -112,7 +112,6 @@ target_link_libraries(executor PUBLIC binder)
 
 add_library(storage STATIC
   lib/storage/storage.cpp
-  lib/storage/filecache.cpp
 )
 target_include_directories(storage PUBLIC lib/storage)
 target_link_libraries(storage PUBLIC vfs encoding)
