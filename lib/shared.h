@@ -1,14 +1,32 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <utility>
 #include <vector>
 
 #pragma once
 
 using TableID = uint64_t;
 using PageNumber = uint64_t;
-using PageKey = std::pair<TableID, PageNumber>;
+enum class ForkType { MAIN, FSM, VM };
+
+struct PageKey {
+  TableID tbl_id;
+  PageNumber pgno;
+  ForkType fork_type;
+
+  PageKey(TableID tbl_id_, PageNumber pgno_) : tbl_id(tbl_id_), pgno(pgno_), fork_type(ForkType::MAIN) {};
+  PageKey() : tbl_id(0), pgno(0), fork_type(ForkType::MAIN) {};
+
+  bool operator==(const PageKey &o) const {
+    return tbl_id == o.tbl_id && pgno == o.pgno && fork_type == o.fork_type;
+  }
+  bool operator!=(const PageKey &o) const { return !(*this == o); }
+  bool operator<(const PageKey &o) const {
+    if (tbl_id != o.tbl_id) return tbl_id < o.tbl_id;
+    if (pgno != o.pgno) return pgno < o.pgno;
+    return fork_type < o.fork_type;
+  }
+};
 
 const size_t PAGE_SIZE = 4096;
 extern const char *DB_FILENAME;

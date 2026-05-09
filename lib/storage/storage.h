@@ -32,8 +32,8 @@ struct Control {
   const std::vector<std::byte> to_bytes() const {
     std::vector<std::byte> buffer;
     encoding::append_uint32(buffer, checksum);
-    encoding::append_uint64(buffer, static_cast<uint64_t>(catalog_key.first));
-    encoding::append_uint64(buffer, static_cast<uint64_t>(catalog_key.second));
+    encoding::append_uint64(buffer, static_cast<uint64_t>(catalog_key.tbl_id));
+    encoding::append_uint64(buffer, static_cast<uint64_t>(catalog_key.pgno));
     return buffer;
   }
 
@@ -48,7 +48,7 @@ struct Control {
         static_cast<TableID>(encoding::read_uint64(buffer, offset));
     PageNumber pgno =
         static_cast<PageNumber>(encoding::read_uint64(buffer, offset));
-    catalog_key = std::make_pair(tbl_id, pgno);
+    catalog_key = PageKey(tbl_id, pgno);
   }
 };
 

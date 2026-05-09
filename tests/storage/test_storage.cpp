@@ -39,8 +39,8 @@ TEST_F(StorageEngineTest, InitControl) {
   size_t offset = 0;
   storage::Control control(buffer, offset);
   ASSERT_EQ(control.checksum, CHECKSUM);
-  ASSERT_EQ(control.catalog_key.first, DEFAULT_CATALOG_TABLE);
-  ASSERT_EQ(control.catalog_key.second, DEFAULT_CATALOG_PGNO);
+  ASSERT_EQ(control.catalog_key.tbl_id, DEFAULT_CATALOG_TABLE);
+  ASSERT_EQ(control.catalog_key.pgno, DEFAULT_CATALOG_PGNO);
 }
 
 TEST_F(StorageEngineTest, CreateTableBasic) {

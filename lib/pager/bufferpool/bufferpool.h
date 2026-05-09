@@ -58,8 +58,7 @@ private:
   std::shared_ptr<std::mutex> bpm_latch_;
   std::vector<std::shared_ptr<pager::FrameHeader>> frames_;
   std::map<PageKey, pager::frame_id_t> frame_table_;
-  std::list<pager::frame_id_t> free_list_; // TODO(andrew): abstract out later
-                                           // into FreeFrameTracker class
+  std::list<pager::frame_id_t> free_list_;
   std::shared_ptr<storage::StorageEngine> storage_engine_;
   std::shared_ptr<pager::Evictor> evictor_;
 

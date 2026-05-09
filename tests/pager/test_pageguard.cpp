@@ -125,8 +125,8 @@ TEST_F(PageGuardTest, ConcurrentRWPageGuards) {
       storage::StorageEngine::open(basedir));
 
   PageKey pgkey(1, 1);
-  storage_engine->create_table(pgkey.first);
-  storage_engine->allocate_page(pgkey.first);
+  storage_engine->create_table(pgkey.tbl_id);
+  storage_engine->allocate_page(pgkey.tbl_id);
   auto write_buffer = [&pgkey, &frame, &evictor, &bpm_latch,
                        &storage_engine](std::vector<std::byte> new_payload) {
     pager::WritePageGuard guard(pgkey, frame, evictor, bpm_latch,

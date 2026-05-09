@@ -122,8 +122,8 @@ storage::StorageEngine::open(const std::string &basepath,
 void storage::StorageEngine::read_page(PageKey pgkey,
                                        std::vector<std::byte> &buffer) {
   assert(vfs_ != nullptr);
-  TableID tbl_id = pgkey.first;
-  PageNumber pgno = pgkey.second;
+  TableID tbl_id = pgkey.tbl_id;
+  PageNumber pgno = pgkey.pgno;
 
   if (pgno > get_latest_page(tbl_id))
     throw std::runtime_error(
@@ -139,8 +139,8 @@ void storage::StorageEngine::read_page(PageKey pgkey,
 void storage::StorageEngine::write_page(PageKey pgkey,
                                         std::vector<std::byte> &buffer) {
   assert(vfs_ != nullptr);
-  TableID tbl_id = pgkey.first;
-  PageNumber pgno = pgkey.second;
+  TableID tbl_id = pgkey.tbl_id;
+  PageNumber pgno = pgkey.pgno;
 
   if (pgno > get_latest_page(tbl_id))
     throw std::runtime_error(
