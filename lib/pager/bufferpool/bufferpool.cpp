@@ -53,7 +53,8 @@ bool pager::BufferPoolManager::ensure_free_frame() {
   return true;
 }
 
-std::optional<PageKey> pager::BufferPoolManager::new_page(TableID tbl_id) {
+std::optional<PageKey> pager::BufferPoolManager::new_page(TableID tbl_id,
+                                                          ForkType fork_type) {
   assert(storage_engine_ != nullptr);
   assert(bpm_latch_ != nullptr);
   assert(evictor_ != nullptr);
@@ -65,7 +66,7 @@ std::optional<PageKey> pager::BufferPoolManager::new_page(TableID tbl_id) {
   }
 
   assert(free_list_.size() > 0 && size() < num_frames_);
-  PageKey pgkey = storage_engine_->allocate_page(tbl_id);
+  PageKey pgkey = storage_engine_->allocate_page(tbl_id, fork_type);
   insert_frame(pgkey);
 
   bpm_latch_->unlock();

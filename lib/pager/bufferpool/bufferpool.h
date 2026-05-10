@@ -71,7 +71,7 @@ public:
   ~BufferPoolManager();
 
   size_t size() const;
-  std::optional<PageKey> new_page(TableID tbl_id);
+  std::optional<PageKey> new_page(TableID tbl_id, ForkType fork_type);
   pager::ReadPageGuard read_page(PageKey pgkey);
   pager::WritePageGuard write_page(PageKey pgkey);
   bool evict_page(PageKey pgkey);
