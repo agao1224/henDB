@@ -83,14 +83,15 @@ private:
   storage::EngineConfig config_;
   storage::Control control_;
   std::map<TableID, storage::TableMetadata> table_metadata_;
+  std::map<std::pair<TableID, int>, PageNumber> aux_fork_last_pgno_;
 
-  PageNumber get_latest_page(TableID tbl_id);
+  PageNumber get_latest_page(TableID tbl_id, ForkType fork_type);
 
   void init_control();
   void init_table_metadata();
-  std::unique_ptr<VirtualFile> open_segment(TableID tbl_id,
-                                            storage::SegmentID seg_id);
-  std::unique_ptr<VirtualFile> get_segment(TableID tbl_id, PageNumber pgno);
+  std::unique_ptr<VirtualFile>
+  open_segment(TableID tbl_id, storage::SegmentID seg_id, ForkType fork_type);
+  std::unique_ptr<VirtualFile> get_segment(PageKey pgkey);
 
   StorageEngine(const std::string &basepath, const storage::EngineConfig = {});
 
@@ -100,7 +101,7 @@ public:
 
   void read_page(PageKey pgkey, std::vector<std::byte> &buffer);
   void write_page(PageKey pgkey, std::vector<std::byte> &buffer);
-  PageKey allocate_page(TableID tbl_id);
+  PageKey allocate_page(TableID tbl_id, ForkType fork_type = ForkType::MAIN);
 
   void create_table(TableID tbl_id);
   void flush_table(TableID tbl_id);

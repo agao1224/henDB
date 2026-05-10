@@ -15,6 +15,7 @@ struct PageKey {
   ForkType fork_type;
 
   PageKey(TableID tbl_id_, PageNumber pgno_) : tbl_id(tbl_id_), pgno(pgno_), fork_type(ForkType::MAIN) {};
+  PageKey(TableID tbl_id_, PageNumber pgno_, ForkType fork_type_) : tbl_id(tbl_id_), pgno(pgno_), fork_type(fork_type_) {};
   PageKey() : tbl_id(0), pgno(0), fork_type(ForkType::MAIN) {};
 
   bool operator==(const PageKey &o) const {

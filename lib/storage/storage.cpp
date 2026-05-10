@@ -60,35 +60,43 @@ void storage::StorageEngine::init_table_metadata() {
 }
 
 std::unique_ptr<VirtualFile>
-storage::StorageEngine::open_segment(TableID tbl_id,
-                                     storage::SegmentID seg_id) {
-  const std::string path = storage::seg_path(tbl_id, seg_id);
+storage::StorageEngine::open_segment(TableID tbl_id, storage::SegmentID seg_id,
+                                     ForkType fork_type) {
+  const std::string path = storage::seg_path(tbl_id, seg_id, fork_type);
   return vfs_->open(path, O_RDWR | O_CREAT);
 }
 
 std::unique_ptr<VirtualFile>
-storage::StorageEngine::get_segment(TableID tbl_id, PageNumber pgno) {
+storage::StorageEngine::get_segment(PageKey pgkey) {
   storage::SegmentID seg_id =
-      storage::pgno_to_segid(pgno, config_.segment_size);
-  assert(vfs_->exists(storage::tbl_path(tbl_id)) &&
-         vfs_->exists(storage::seg_path(tbl_id, seg_id)));
-  auto seg = open_segment(tbl_id, seg_id);
-  if (seg == nullptr)
+      storage::pgno_to_segid(pgkey.pgno, config_.segment_size);
+  assert(vfs_->exists(storage::tbl_path(pgkey.tbl_id)) &&
+         vfs_->exists(storage::seg_path(pgkey.tbl_id, seg_id, pgkey.fork_type)));
+  auto seg = open_segment(pgkey.tbl_id, seg_id, pgkey.fork_type);
+  if (seg == nullptr) {
     throw std::runtime_error(
         "[StorageEngine]: Failed to open segment for tbl=" +
-        std::to_string(tbl_id) + " pgno=" + std::to_string(pgno));
+        std::to_string(pgkey.tbl_id) + " pgno=" + std::to_string(pgkey.pgno));
+  }
   return seg;
 }
 
-PageNumber storage::StorageEngine::get_latest_page(TableID tbl_id) {
+PageNumber storage::StorageEngine::get_latest_page(TableID tbl_id,
+                                                   ForkType fork_type) {
   assert(vfs_ != nullptr);
+
+  if (fork_type != ForkType::MAIN) {
+    auto key = std::make_pair(tbl_id, static_cast<int>(fork_type));
+    auto it = aux_fork_last_pgno_.find(key);
+    return (it == aux_fork_last_pgno_.end()) ? UINT64_MAX : it->second;
+  }
+
   auto it = table_metadata_.find(tbl_id);
-  PageNumber latest_page;
   if (it == table_metadata_.end()) {
     storage::SegmentID seg_id = storage::pgno_to_segid(
         DEFAULT_TABLE_METADATA_PGNO, config_.segment_size);
 
-    auto first_segmt = open_segment(tbl_id, seg_id);
+    auto first_segmt = open_segment(tbl_id, seg_id, ForkType::MAIN);
     assert(first_segmt != nullptr);
     std::vector<std::byte> buffer;
     first_segmt->read(buffer, config_.page_size, 0);
@@ -98,11 +106,9 @@ PageNumber storage::StorageEngine::get_latest_page(TableID tbl_id) {
     assert(offset == buffer.size());
 
     table_metadata_[tbl_id] = metadata;
-    latest_page = metadata.last_pgno;
-  } else {
-    latest_page = (it->second).last_pgno;
+    return metadata.last_pgno;
   }
-  return latest_page;
+  return it->second.last_pgno;
 }
 
 storage::StorageEngine::StorageEngine(const std::string &basepath,
@@ -125,11 +131,11 @@ void storage::StorageEngine::read_page(PageKey pgkey,
   TableID tbl_id = pgkey.tbl_id;
   PageNumber pgno = pgkey.pgno;
 
-  if (pgno > get_latest_page(tbl_id))
+  if (pgno > get_latest_page(tbl_id, pgkey.fork_type))
     throw std::runtime_error(
         "[StorageEngine:read_page]: Attempted to read past last page");
 
-  auto seg = get_segment(tbl_id, pgno);
+  auto seg = get_segment(pgkey);
   uint64_t offset = storage::pgno_to_file_offset(pgno, config_.segment_size,
                                                  config_.page_size);
   seg->read(buffer, config_.page_size, offset);
@@ -142,31 +148,46 @@ void storage::StorageEngine::write_page(PageKey pgkey,
   TableID tbl_id = pgkey.tbl_id;
   PageNumber pgno = pgkey.pgno;
 
-  if (pgno > get_latest_page(tbl_id))
+  if (pgno > get_latest_page(tbl_id, pgkey.fork_type))
     throw std::runtime_error(
         "[StorageEngine:write_page]: Attempted to write past last page");
 
-  auto seg = get_segment(tbl_id, pgno);
+  auto seg = get_segment(pgkey);
   uint64_t offset = storage::pgno_to_file_offset(pgno, config_.segment_size,
                                                  config_.page_size);
   seg->write(&buffer, config_.page_size, offset);
   return;
 }
 
-PageKey storage::StorageEngine::allocate_page(TableID tbl_id) {
+PageKey storage::StorageEngine::allocate_page(TableID tbl_id,
+                                              ForkType fork_type) {
   assert(vfs_ != nullptr);
+  assert(vfs_->exists(storage::tbl_path(tbl_id)));
 
-  const std::string dir = storage::tbl_path(tbl_id);
-  assert(vfs_->exists(dir));
+  if (fork_type != ForkType::MAIN) {
+    auto key = std::make_pair(tbl_id, static_cast<int>(fork_type));
+    auto it = aux_fork_last_pgno_.find(key);
+    PageNumber new_pgno = (it == aux_fork_last_pgno_.end()) ? 0 : it->second + 1;
 
-  PageNumber latest_page = get_latest_page(tbl_id);
+    storage::SegmentID seg_id =
+        storage::pgno_to_segid(new_pgno, config_.segment_size);
+    auto segmt = open_segment(tbl_id, seg_id, fork_type);
+    uint64_t offset = storage::pgno_to_file_offset(new_pgno, config_.segment_size,
+                                                   config_.page_size);
+    segmt->write(nullptr, config_.page_size, offset);
+
+    aux_fork_last_pgno_[key] = new_pgno;
+    return PageKey(tbl_id, new_pgno, fork_type);
+  }
+
+  PageNumber latest_page = get_latest_page(tbl_id, ForkType::MAIN);
   latest_page++;
 
   storage::SegmentID seg_id =
       storage::pgno_to_segid(latest_page, config_.segment_size);
-  auto segmt = open_segment(tbl_id, seg_id);
-  uint64_t offset = storage::pgno_to_file_offset(
-      latest_page, config_.segment_size, config_.page_size);
+  auto segmt = open_segment(tbl_id, seg_id, ForkType::MAIN);
+  uint64_t offset = storage::pgno_to_file_offset(latest_page, config_.segment_size,
+                                                 config_.page_size);
   segmt->write(nullptr, config_.page_size, offset);
 
   table_metadata_[tbl_id].last_pgno++;
@@ -187,7 +208,7 @@ void storage::StorageEngine::create_table(TableID tbl_id) {
   vfs_->mkdir(dir);
   storage::SegmentID seg_id =
       storage::pgno_to_segid(DEFAULT_TABLE_METADATA_PGNO, config_.segment_size);
-  auto first_segmt = open_segment(tbl_id, seg_id);
+  auto first_segmt = open_segment(tbl_id, seg_id, ForkType::MAIN);
 
   if (first_segmt == nullptr) {
     throw std::runtime_error(
@@ -200,6 +221,7 @@ void storage::StorageEngine::create_table(TableID tbl_id) {
   table_metadata_[tbl_id] = metadata;
   std::vector<std::byte> buffer = metadata.to_bytes();
   first_segmt->write(&buffer, config_.page_size, 0);
+
   return;
 }
 
@@ -212,7 +234,7 @@ void storage::StorageEngine::flush_table(TableID tbl_id) {
     const std::string tbl_metadata_path = storage::seg_path(tbl_id, seg_id);
     assert(vfs_->exists(tbl_metadata_path));
 
-    auto segmt = open_segment(tbl_id, seg_id);
+    auto segmt = open_segment(tbl_id, seg_id, ForkType::MAIN);
 
     storage::TableMetadata metadata = table_metadata_[tbl_id];
     std::vector<std::byte> buffer = metadata.to_bytes();
@@ -222,9 +244,8 @@ void storage::StorageEngine::flush_table(TableID tbl_id) {
   }
 
   std::vector<std::string> seg_files = vfs_->ls(storage::tbl_path(tbl_id));
-  for (auto &seg_path : seg_files) {
-    storage::SegmentID seg_id = storage::path_to_seg_id(seg_path);
-    auto seg = open_segment(tbl_id, seg_id);
+  for (auto &seg_file : seg_files) {
+    auto seg = vfs_->open(seg_file, O_RDWR);
     seg->sync();
   }
   return;

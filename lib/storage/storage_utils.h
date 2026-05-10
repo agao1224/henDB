@@ -10,8 +10,19 @@ using SegmentID = uint64_t;
 
 inline std::string tbl_path(TableID tbl_id) { return std::to_string(tbl_id); }
 
-inline std::string seg_path(TableID tbl_id, SegmentID seg_id) {
-  return std::to_string(tbl_id) + "/" + std::to_string(seg_id) + ".db";
+inline std::string fork_suffix(ForkType fork_type) {
+  switch (fork_type) {
+  case ForkType::FSM: return "_fsm";
+  case ForkType::VM:  return "_vm";
+  case ForkType::MAIN: return "";
+  }
+  return "";
+}
+
+inline std::string seg_path(TableID tbl_id, SegmentID seg_id,
+                            ForkType fork_type = ForkType::MAIN) {
+  return std::to_string(tbl_id) + "/" + std::to_string(seg_id) + ".db" +
+         fork_suffix(fork_type);
 }
 
 inline SegmentID pgno_to_segid(PageNumber pgno, uint64_t pages_per_segment) {
